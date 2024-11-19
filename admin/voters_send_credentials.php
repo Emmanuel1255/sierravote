@@ -2,75 +2,16 @@
 include 'includes/session.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\SMTP;
 
 require 'phpmailer/src/Exception.php';
 require 'phpmailer/src/PHPMailer.php';
 require 'phpmailer/src/SMTP.php';
 
-// Initialize response array
-$response = array('success' => false, 'message' => '');
-
-try {
-    if(isset($_POST['id'])) {
-        // Single voter email
-        $voter_id = $_POST['id'];
-        $sql = "SELECT * FROM voters WHERE id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $voter_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        if($result->num_rows == 0) {
-            throw new Exception('Voter not found');
-        }
-
-        $voter = $result->fetch_assoc();
-        
-        if(sendCredentialEmail($voter['email'], $voter['firstname'], $voter['lastname'], $voter['voters_id'], $voter['password'])) {
-            $response['success'] = true;
-            $response['message'] = 'Credentials sent successfully';
-        } else {
-            throw new Exception('Failed to send email');
-        }
-    } 
-    elseif(isset($_POST['send_all'])) {
-        // Send to all voters
-        $sql = "SELECT * FROM voters";
-        $result = $conn->query($sql);
-        
-        $success_count = 0;
-        $error_count = 0;
-        
-        while($voter = $result->fetch_assoc()) {
-            if(sendCredentialEmail($voter['email'], $voter['firstname'], $voter['lastname'], $voter['voters_id'], $voter['password'])) {
-                $success_count++;
-            } else {
-                $error_count++;
-            }
-            // Add small delay between emails
-            usleep(500000); // 0.5 second delay
-        }
-        
-        $response['success'] = true;
-        $response['success_count'] = $success_count;
-        $response['error_count'] = $error_count;
-        $response['message'] = "Sent successfully: $success_count, Failed: $error_count";
-    }
-} catch (Exception $e) {
-    $response['success'] = false;
-    $response['message'] = $e->getMessage();
-    error_log("Error sending credentials: " . $e->getMessage());
-}
-
-// Send JSON response
-header('Content-Type: application/json');
-echo json_encode($response);
-
 function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password) {
     $mail = new PHPMailer(true);
     
     try {
-        // Server settings
         $mail->isSMTP();
         $mail->Host = 'smtp.hostinger.com';
         $mail->SMTPAuth = true;
@@ -80,16 +21,11 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
         $mail->Port = 465;
         $mail->SMTPDebug = 0;
 
-        // Recipients
         $mail->setFrom('emmanuel@mannie-sl.com', 'Voting System');
-        $mail->addAddress($email, $firstname . ' ' . $lastname);
-
-        // Content
+        $mail->addAddress($email, "$firstname $lastname");
         $mail->isHTML(true);
-        $mail->CharSet = 'UTF-8';
         $mail->Subject = 'Your Voting System Credentials';
-        
-        // Email template
+
         $mail->Body = "
             <!DOCTYPE html>
             <html>
@@ -115,7 +51,7 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
                         <div class='credentials'>
                             <p><strong>Voter ID:</strong> {$voter_id}</p>
                             <p><strong>Password:</strong> {$password}</p>
-                            <p><a href='http://localhost/votesystem/login.php'>Click here to login</a></p>
+                            <p><a href='https://sierravote.mannie-sl.com/'>Click here to login</a></p>
                         </div>
                         
                         <p><strong>Important Security Notes:</strong></p>
@@ -135,11 +71,61 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
             </html>
         ";
 
+        // Plain text alternative
+        $mail->AltBody = "Your voting credentials:\nVoter ID: {$voter_id}\nPassword: {$password}\n\nLogin at: https://sierravote.mannie-sl.com/";
+
+
         $mail->send();
         return true;
     } catch (Exception $e) {
-        error_log("Mail Error: " . $e->getMessage());
         return false;
     }
 }
+
+$response = array('status' => false, 'message' => '');
+
+try {
+    if(isset($_POST['id'])) {
+        $voter_id = $_POST['id'];
+        $stmt = $conn->prepare("SELECT * FROM voters WHERE id = ?");
+        $stmt->bind_param("i", $voter_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if($result->num_rows > 0) {
+            $voter = $result->fetch_assoc();
+            if(sendCredentialEmail($voter['email'], $voter['firstname'], $voter['lastname'], $voter['voters_id'], $voter['password'])) {
+                $response['status'] = true;
+                $response['message'] = 'Email sent successfully';
+            } else {
+                $response['message'] = 'Failed to send email';
+            }
+        } else {
+            $response['message'] = 'Voter not found';
+        }
+        $stmt->close();
+    } 
+    elseif(isset($_POST['send_all'])) {
+        $result = $conn->query("SELECT * FROM voters");
+        $success = 0;
+        $failed = 0;
+        
+        while($voter = $result->fetch_assoc()) {
+            if(sendCredentialEmail($voter['email'], $voter['firstname'], $voter['lastname'], $voter['voters_id'], $voter['password'])) {
+                $success++;
+            } else {
+                $failed++;
+            }
+            usleep(500000);
+        }
+        
+        $response['status'] = ($success > 0);
+        $response['message'] = "Sent: $success, Failed: $failed";
+    }
+} catch (Exception $e) {
+    $response['message'] = 'An error occurred';
+}
+
+header('Content-Type: application/json');
+echo json_encode($response);
 ?>

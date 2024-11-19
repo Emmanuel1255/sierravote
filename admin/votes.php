@@ -54,11 +54,19 @@
                   <th class="hidden"></th>
                   <th>Position</th>
                   <th>Candidate</th>
-                  <th>Voter</th>
+                  <th>Voter ID</th>
                 </thead>
                 <tbody>
                   <?php
-                    $sql = "SELECT *, candidates.firstname AS canfirst, candidates.lastname AS canlast, voters.firstname AS votfirst, voters.lastname AS votlast FROM votes LEFT JOIN positions ON positions.id=votes.position_id LEFT JOIN candidates ON candidates.id=votes.candidate_id LEFT JOIN voters ON voters.id=votes.voters_id ORDER BY positions.priority ASC";
+                    $sql = "SELECT positions.description, 
+                           candidates.firstname AS canfirst, 
+                           candidates.lastname AS canlast, 
+                           voters.voters_id 
+                           FROM votes 
+                           LEFT JOIN positions ON positions.id=votes.position_id 
+                           LEFT JOIN candidates ON candidates.id=votes.candidate_id 
+                           LEFT JOIN voters ON voters.id=votes.voters_id 
+                           ORDER BY positions.priority ASC";
                     $query = $conn->query($sql);
                     while($row = $query->fetch_assoc()){
                       echo "
@@ -66,7 +74,7 @@
                           <td class='hidden'></td>
                           <td>".$row['description']."</td>
                           <td>".$row['canfirst'].' '.$row['canlast']."</td>
-                          <td>".$row['votfirst'].' '.$row['votlast']."</td>
+                          <td>".$row['voters_id']."</td>
                         </tr>
                       ";
                     }

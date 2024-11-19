@@ -74,7 +74,7 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
                         <div class='credentials'>
                             <p><strong>Voter ID:</strong> $voter_id</p>
                             <p><strong>Password:</strong> $password</p>
-                            <p><a href='http://localhost/votesystem/login.php'>Click here to login</a></p>
+                            <p><a href='https://sierravote.mannie-sl.com/'>Click here to login</a></p>
                         </div>
                         
                         <p><strong>Important Security Notes:</strong></p>
@@ -104,7 +104,7 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
             
             Voter ID: $voter_id
             Password: $password
-            Click here to login: http://localhost/votesystem/login.php
+            Click here to login: https://sierravote.mannie-sl.com/
             
             Please keep these credentials safe and do not share them with anyone.
             

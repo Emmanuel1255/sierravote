@@ -46,7 +46,6 @@
 				          	";
 				          	unset($_SESSION['success']);
 				        }
-
 				    ?>
  
 				    <div class="alert alert-danger alert-dismissible" id="alert" style="display:none;">
@@ -68,7 +67,7 @@
 				    	else{
 				    		?>
 			    			<!-- Voting Ballot -->
-						    <form method="POST" id="ballotForm" action="submit_ballot.php">
+						    <form method="POST" id="ballotForm" action="javascript:void(0);">
 				        		<?php
 				        			include 'includes/slugify.php';
 
@@ -139,13 +138,12 @@
 				        		?>
 				        		<div class="text-center">
 					        		<button type="button" class="btn btn-success btn-flat" id="preview"><i class="fa fa-file-text"></i> Preview</button> 
-					        		<button type="submit" class="btn btn-primary btn-flat" name="vote"><i class="fa fa-check-square-o"></i> Submit</button>
+					        		<button type="button" class="btn btn-primary btn-flat" id="submit_ballot"><i class="fa fa-check-square-o"></i> Submit</button>
 					        	</div>
 				        	</form>
 				        	<!-- End Voting Ballot -->
 				    		<?php
 				    	}
-
 				    ?>
 
 	        	</div>
@@ -157,6 +155,38 @@
   
   	<?php include 'includes/footer.php'; ?>
   	<?php include 'includes/ballot_modal.php'; ?>
+
+    <!-- Verification Modal -->
+    <div class="modal fade" id="verifyModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title"><b>Verify Your Vote</b></h4>
+                </div>
+                <div class="modal-body">
+                    <div id="verify_body">
+                        <!-- Content will be loaded here -->
+                    </div>
+                    <div id="otp_section" style="display:none;">
+                        <h4 class="text-center">Enter OTP Verification Code</h4>
+                        <p class="text-center">An OTP has been sent to your email address.</p>
+                        <div class="form-group text-center">
+                            <input type="text" class="form-control input-lg" style="width:200px;margin:0 auto;" 
+                                id="otp_input" placeholder="Enter OTP" maxlength="6">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-flat pull-left" data-dismiss="modal"><i class="fa fa-close"></i> Close</button>
+                    <button type="button" class="btn btn-success btn-flat" id="verify_votes"><i class="fa fa-check"></i> Verify & Submit</button>
+                    <button type="button" class="btn btn-primary btn-flat" id="submit_otp" style="display:none;"><i class="fa fa-check-circle"></i> Submit OTP</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php include 'includes/scripts.php'; ?>
@@ -186,7 +216,7 @@ $(function(){
 		e.preventDefault();
 		var form = $('#ballotForm').serialize();
 		if(form == ''){
-			$('.message').html('You must vote atleast one candidate');
+			$('.message').html('You must vote for at least one candidate');
 			$('#alert').show();
 		}
 		else{
@@ -212,9 +242,80 @@ $(function(){
 				}
 			});
 		}
-		
 	});
 
+    $('#submit_ballot').click(function(e){
+        e.preventDefault();
+        var form = $('#ballotForm').serialize();
+        if(form == ''){
+            $('.message').html('You must vote for at least one candidate');
+            $('#alert').show();
+        }
+        else{
+            $.ajax({
+                type: 'POST',
+                url: 'preview.php',
+                data: form,
+                dataType: 'json',
+                success: function(response){
+                    if(response.error){
+                        var errmsg = '';
+                        var messages = response.message;
+                        for (i in messages) {
+                            errmsg += messages[i]; 
+                        }
+                        $('.message').html(errmsg);
+                        $('#alert').show();
+                    }
+                    else{
+                        $('#verifyModal').modal('show');
+                        $('#verify_body').html(response.list);
+                    }
+                }
+            });
+        }
+    });
+
+    $('#verify_votes').click(function(){
+        $.ajax({
+            type: 'POST',
+            url: 'send_otp.php',
+            dataType: 'json',
+            success: function(response){
+                if(response.success){
+                    $('#verify_votes').hide();
+                    $('#otp_section').show();
+                    $('#submit_otp').show();
+                }
+                else{
+                    alert('Error sending OTP. Please try again.');
+                }
+            }
+        });
+    });
+
+    $('#submit_otp').click(function(){
+        var otp = $('#otp_input').val();
+        var form = $('#ballotForm').serialize();
+        
+        $.ajax({
+            type: 'POST',
+            url: 'verify_otp.php',
+            data: {
+                otp: otp,
+                ballot: form
+            },
+            dataType: 'json',
+            success: function(response){
+                if(response.success){
+                    window.location = 'submit_final.php';
+                }
+                else{
+                    alert('Invalid OTP. Please try again.');
+                }
+            }
+        });
+    });
 });
 </script>
 </body>
