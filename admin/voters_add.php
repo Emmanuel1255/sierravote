@@ -1,5 +1,9 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 include 'includes/session.php';
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -7,19 +11,21 @@ require 'phpmailer/src/Exception.php';
 require 'phpmailer/src/PHPMailer.php';
 require 'phpmailer/src/SMTP.php';
 
-function generatePassword($length = 8) {
+function generatePassword($length = 8)
+{
     // Include special characters for stronger passwords
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
     $password = '';
-    for($i = 0; $i < $length; $i++) {
+    for ($i = 0; $i < $length; $i++) {
         $password .= $chars[rand(0, strlen($chars) - 1)];
     }
     return $password;
 }
 
-function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password) {
+function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password)
+{
     $mail = new PHPMailer(true);
-    
+
     try {
         // Server settings
         $mail->isSMTP();
@@ -68,6 +74,7 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
                         <div class='credentials'>
                             <p><strong>Voter ID:</strong> $voter_id</p>
                             <p><strong>Password:</strong> $password</p>
+                            <p><a href='http://localhost/votesystem/login.php'>Click here to login</a></p>
                         </div>
                         
                         <p><strong>Important Security Notes:</strong></p>
@@ -97,6 +104,7 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
             
             Voter ID: $voter_id
             Password: $password
+            Click here to login: http://localhost/votesystem/login.php
             
             Please keep these credentials safe and do not share them with anyone.
             
@@ -112,59 +120,59 @@ function sendCredentialEmail($email, $firstname, $lastname, $voter_id, $password
     }
 }
 
-if(isset($_POST['add'])) {
+if (isset($_POST['add'])) {
     try {
         $firstname = $conn->real_escape_string(trim($_POST['firstname']));
         $lastname = $conn->real_escape_string(trim($_POST['lastname']));
         $email = $conn->real_escape_string(trim($_POST['email']));
 
         // Validate email
-        if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new Exception('Invalid email address format');
         }
 
         $password = generatePassword(10); // Increased to 10 characters
-        
+
         // Handle photo upload
         $filename = '';
-        if(!empty($_FILES['photo']['name'])){
+        if (!empty($_FILES['photo']['name'])) {
             $allowed = array('jpg', 'jpeg', 'png');
             $filename = $_FILES['photo']['name'];
             $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            
-            if(!in_array($ext, $allowed)) {
+
+            if (!in_array($ext, $allowed)) {
                 throw new Exception('Invalid photo format. Only JPG, JPEG, and PNG are allowed.');
             }
-            
+
             // Generate unique filename
             $filename = time() . '_' . $filename;
-            move_uploaded_file($_FILES['photo']['tmp_name'], '../images/'.$filename);
+            move_uploaded_file($_FILES['photo']['tmp_name'], '../images/' . $filename);
         }
-        
+
         // Generate voter ID
         $set = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $voter = substr(str_shuffle($set), 0, 5);
-        
+
         // Check if voter ID already exists
         do {
             $check = $conn->query("SELECT * FROM voters WHERE voters_id = '$voter'");
-            if($check->num_rows > 0) {
+            if ($check->num_rows > 0) {
                 $voter = substr(str_shuffle($set), 0, 5);
             }
-        } while($check->num_rows > 0);
+        } while ($check->num_rows > 0);
 
         $sql = "INSERT INTO voters (voters_id, password, firstname, lastname, email, photo) 
                 VALUES ('$voter', '$password', '$firstname', '$lastname', '$email', '$filename')";
-        
-        if($conn->query($sql)){
-            if(isset($_POST['send_email'])) {
-                if(sendCredentialEmail($email, $firstname, $lastname, $voter, $password)) {
+
+        if ($conn->query($sql)) {
+            if (isset($_POST['send_email'])) {
+                if (sendCredentialEmail($email, $firstname, $lastname, $voter, $password)) {
                     $_SESSION['success'] = 'Voter added successfully and credentials sent via email.';
                 } else {
-                    $_SESSION['success'] = 'Voter added successfully but failed to send email. Voter ID: '.$voter.' Password: '.$password;
+                    $_SESSION['success'] = 'Voter added successfully but failed to send email. Voter ID: ' . $voter . ' Password: ' . $password;
                 }
             } else {
-                $_SESSION['success'] = 'Voter added successfully. Voter ID: '.$voter.' Password: '.$password;
+                $_SESSION['success'] = 'Voter added successfully. Voter ID: ' . $voter . ' Password: ' . $password;
             }
         } else {
             throw new Exception($conn->error);
@@ -172,16 +180,15 @@ if(isset($_POST['add'])) {
     } catch (Exception $e) {
         $_SESSION['error'] = $e->getMessage();
     }
-}
-elseif(isset($_POST['upload'])) {
+} elseif (isset($_POST['upload'])) {
     try {
-        if(!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('Please upload a valid CSV file');
         }
 
         $file = $_FILES['csv_file']['tmp_name'];
-        
-        if(!is_uploaded_file($file)) {
+
+        if (!is_uploaded_file($file)) {
             throw new Exception('Failed to upload file');
         }
 
@@ -190,12 +197,12 @@ elseif(isset($_POST['upload'])) {
         $mimeType = finfo_file($fileInfo, $file);
         finfo_close($fileInfo);
 
-        if(!in_array($mimeType, ['text/csv', 'text/plain', 'application/vnd.ms-excel'])) {
+        if (!in_array($mimeType, ['text/csv', 'text/plain', 'application/vnd.ms-excel'])) {
             throw new Exception('File must be a CSV');
         }
 
         $handle = fopen($file, "r");
-        if($handle === false) {
+        if ($handle === false) {
             throw new Exception('Failed to open file');
         }
 
@@ -203,10 +210,10 @@ elseif(isset($_POST['upload'])) {
         $error_count = 0;
         $created_voters = array();
         $row_count = 0;
-        
+
         // Skip header row
         fgetcsv($handle);
-        
+
         while(($data = fgetcsv($handle)) !== FALSE) {
             $row_count++;
             
@@ -214,21 +221,21 @@ elseif(isset($_POST['upload'])) {
             if(count($data) < 3) {
                 throw new Exception("Invalid data format in row $row_count");
             }
-
-            $firstname = $conn->real_escape_string(trim($data[0]));
-            $lastname = $conn->real_escape_string(trim($data[1]));
-            $email = $conn->real_escape_string(trim($data[2]));
-
+        
+            $firstname = trim($data[0]);
+            $lastname = trim($data[1]);
+            $email = trim($data[2]);
+        
             if(empty($firstname) || empty($lastname) || empty($email)) {
                 $error_count++;
                 continue;
             }
-
+        
             if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $error_count++;
                 continue;
             }
-
+        
             $password = generatePassword(10);
             $voter = substr(str_shuffle('123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 5);
             
@@ -240,10 +247,13 @@ elseif(isset($_POST['upload'])) {
                 }
             } while($check->num_rows > 0);
             
-            $sql = "INSERT INTO voters (voters_id, password, firstname, lastname, email) 
-                   VALUES ('$voter', '$password', '$firstname', '$lastname', '$email')";
+            // Use prepared statement
+            $stmt = $conn->prepare("INSERT INTO voters (voters_id, password, firstname, lastname, email, photo) VALUES (?, ?, ?, ?, ?, ?)");
+            $default_photo = 'user-avatar.png';
             
-            if($conn->query($sql)){
+            $stmt->bind_param("ssssss", $voter, $password, $firstname, $lastname, $email, $default_photo);
+            
+            if($stmt->execute()){
                 $success_count++;
                 $created_voters[] = array(
                     'firstname' => $firstname,
@@ -255,45 +265,45 @@ elseif(isset($_POST['upload'])) {
             } else {
                 $error_count++;
             }
-
+        
+            $stmt->close();
+        
             // Commit every 100 records
             if($success_count % 100 == 0) {
                 $conn->commit();
             }
         }
-        
+
         fclose($handle);
-        
-        if($success_count == 0) {
+
+        if ($success_count == 0) {
             throw new Exception('No valid records were found in the CSV file');
         }
-        
+
         // Create CSV with credentials
         $output = fopen('php://temp', 'w+');
         fputcsv($output, array('Firstname', 'Lastname', 'Email', 'Voter ID', 'Password'));
-        foreach($created_voters as $voter) {
+        foreach ($created_voters as $voter) {
             fputcsv($output, $voter);
         }
-        
+
         rewind($output);
         $csv_data = stream_get_contents($output);
         fclose($output);
-        
+
         $_SESSION['csv_data'] = $csv_data;
         $_SESSION['created_voters'] = $created_voters;
         $_SESSION['success'] = "Upload complete. Successfully added: $success_count voters. Failed: $error_count";
-        
     } catch (Exception $e) {
         $_SESSION['error'] = $e->getMessage();
     }
-}
-elseif(isset($_POST['send_bulk_email'])) {
+} elseif (isset($_POST['send_bulk_email'])) {
     try {
         $success_count = 0;
         $error_count = 0;
         $error_messages = array();
-        
-        if(!isset($_SESSION['created_voters'])) {
+
+        if (!isset($_SESSION['created_voters'])) {
             throw new Exception('No voter data available for sending emails');
         }
 
@@ -307,37 +317,37 @@ elseif(isset($_POST['send_bulk_email'])) {
         $mail->Port = 465;
         $mail->SMTPKeepAlive = true; // Important for bulk email
 
-        foreach($_SESSION['created_voters'] as $voter) {
+        foreach ($_SESSION['created_voters'] as $voter) {
             try {
-                if(sendCredentialEmail($voter['email'], $voter['firstname'], $voter['lastname'], $voter['voter_id'], $voter['password'])) {
+                if (sendCredentialEmail($voter['email'], $voter['firstname'], $voter['lastname'], $voter['voter_id'], $voter['password'])) {
                     $success_count++;
                 } else {
                     $error_count++;
                     $error_messages[] = "Failed to send to: " . $voter['email'];
                 }
-                
+
                 // Add delay to prevent overwhelming the mail server
                 usleep(500000); // 0.5 second delay
-                
+
             } catch (Exception $e) {
                 $error_count++;
                 $error_messages[] = $e->getMessage();
             }
         }
-        
-        if($success_count > 0) {
+
+        if ($success_count > 0) {
             $_SESSION['success'] = "Email sending complete. Successful: $success_count, Failed: $error_count";
         } else {
             throw new Exception("Failed to send any emails. Please check your email configuration.");
         }
-        
+
         // Log errors if any
-        if(!empty($error_messages)) {
+        if (!empty($error_messages)) {
             error_log("Bulk email errors: " . implode("\n", $error_messages));
         }
-        
+
         unset($_SESSION['created_voters']); // Clear the stored data
-        
+
     } catch (Exception $e) {
         $_SESSION['error'] = $e->getMessage();
         error_log("Bulk email error: " . $e->getMessage());
@@ -345,4 +355,3 @@ elseif(isset($_POST['send_bulk_email'])) {
 }
 
 header('location: voters.php');
-?>
