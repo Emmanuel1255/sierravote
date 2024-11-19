@@ -66,9 +66,6 @@ DOWNLOAD "Online Voting Management System Project"
 - Cast the vote and submit.
 
 ## Screenshot
-Voting Interface![Voting Interface](https://github.com/mohangowdatdev/online-voting-system-DBMS-Project/blob/main/Screenshot_Images/Opera%20Snapshot_2024-03-03_200245_localhost.png?raw=true)
-Admin Dashboard![Admin Dashboard](https://github.com/mohangowdatdev/online-voting-system-DBMS-Project/blob/main/Screenshot_Images/Screenshot%202024-03-03%20173257.png?raw=true)
-Database Snapshot![Database Snapshot](https://github.com/mohangowdatdev/online-voting-system-DBMS-Project/blob/main/Screenshot_Images/Screenshot%202024-03-03%20201439.png)
 
 ## License
 
